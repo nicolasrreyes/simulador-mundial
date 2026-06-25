@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+allure-report/
+allure-results/
+coverage.xml
+worldcup.db
+dist/
+.sonar/
+.agents/

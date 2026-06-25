@@ -1,0 +1,139 @@
+name: CI/CD — Simulador Mundial 2026
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ① Lint (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ruff
+        run: pip install ruff
+      - name: Run Ruff check
+        run: ruff check . --output-format=github
+      - name: Fail on major findings
+        if: failure()
+        run: |
+          echo "::error::Ruff encontró hallazgos MAJOR — pipeline detenido"
+          exit 1
+
+  tests:
+    name: ② Tests + Coverage
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///:memory:
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run tests with coverage
+        run: python -m pytest tests/ --cov=. --cov-report=xml --ignore=tests/test_frontend_smoke.py -q
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  quality-gate:
+    name: ③ Quality Gate
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+      - name: Check coverage threshold
+        run: |
+          python -c "
+import xml.etree.ElementTree as ET
+tree = ET.parse('coverage.xml')
+root = tree.getroot()
+line_rate = float(root.attrib['line-rate'])
+threshold = 0.80
+print(f'Cobertura actual: {line_rate:.2%}')
+if line_rate < threshold:
+    print(f'::error::Quality Gate FAIL: cobertura {line_rate:.2%} < {threshold:.0%}')
+    exit(1)
+else:
+    print(f'Quality Gate PASS: cobertura {line_rate:.2%} >= {threshold:.0%}')
+"
+
+  simulate:
+    name: ④ Simular Mundial
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///:memory:
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run simulation and generate static site
+        run: python seed_and_simulate.py
+      - name: Validate static site exists
+        run: |
+          if (Test-Path -LiteralPath "dist/index.html") {
+            Write-Output "✅ dist/index.html generado correctamente"
+          } else {
+            Write-Output "::error::dist/index.html no encontrado"
+            exit 1
+          }
+        shell: pwsh
+      - name: Print world champion
+        run: |
+          $json = Get-Content -Raw dist/data/simulation.json | ConvertFrom-Json
+          Write-Output "🏆 Campeón del Mundo: $($json.champion)"
+        shell: pwsh
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+  deploy:
+    name: ⑤ Deploy a GitHub Pages
+    needs: simulate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+# Comando PowerShell para probar localmente antes del push:
+# $env:DATABASE_URL="sqlite:///:memory:"; python seed_and_simulate.py
