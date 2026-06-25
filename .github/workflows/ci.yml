@@ -1,19 +1,10 @@
-name: CI/CD — Simulador Mundial 2026
+name: CI — Simulador Mundial 2026
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   lint:
@@ -86,54 +77,3 @@ jobs:
           else:
               print(f'Quality Gate PASS: cobertura {line_rate:.2%} >= {threshold:.0%}')
           "
-
-  simulate:
-    name: ④ Simular Mundial
-    needs: quality-gate
-    runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: "sqlite:///:memory:"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run simulation and generate static site
-        run: python seed_and_simulate.py
-      - name: Validate static site exists
-        run: |
-          if (Test-Path -LiteralPath "dist/index.html") {
-            Write-Output "✅ dist/index.html generado correctamente"
-          } else {
-            Write-Output "::error::dist/index.html no encontrado"
-            exit 1
-          }
-        shell: pwsh
-      - name: Print world champion
-        run: |
-          $json = Get-Content -Raw dist/data/simulation.json | ConvertFrom-Json
-          Write-Output "🏆 Campeón del Mundo: $($json.champion)"
-        shell: pwsh
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/
-
-  deploy:
-    name: ⑤ Deploy a GitHub Pages
-    needs: simulate
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-# Comando PowerShell para probar localmente antes del push:
-# $env:DATABASE_URL="sqlite:///:memory:"; python seed_and_simulate.py

@@ -4,6 +4,7 @@ __pycache__/
 allure-report/
 allure-results/
 coverage.xml
+.coverage
 worldcup.db
 dist/
 .sonar/
