@@ -40,7 +40,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: sqlite:///:memory:
+      DATABASE_URL: "sqlite:///:memory:"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python 3.12
@@ -92,7 +92,7 @@ else:
     needs: quality-gate
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: sqlite:///:memory:
+      DATABASE_URL: "sqlite:///:memory:"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python 3.12
