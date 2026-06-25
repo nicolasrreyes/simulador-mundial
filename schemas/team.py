@@ -29,5 +29,5 @@ class TeamWithPlayers(TeamResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
-from schemas.player import PlayerResponse
-TeamWithPlayers.model_rebuild()
+from schemas.player import PlayerResponse  # noqa: E402
+TeamWithPlayers.model_rebuild()  # noqa: E402

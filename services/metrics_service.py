@@ -1,4 +1,3 @@
-import os
 from fastapi import HTTPException
 from services.simulation_cache import retrieve
 from schemas.metrics import DashboardMetrics, TopScorerSchema

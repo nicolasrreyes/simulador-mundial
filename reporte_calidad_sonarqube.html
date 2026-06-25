@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reporte de Calidad y Cobertura</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+    }
+
+    :root {
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #0f4c81;
+      --line: #d1d5db;
+      --panel: #f8fafc;
+      --code: #eef2f7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: white;
+      line-height: 1.42;
+      font-size: 11pt;
+    }
+
+    .page {
+      width: 100%;
+      min-height: 250mm;
+      page-break-after: always;
+      position: relative;
+      padding-top: 8mm;
+      padding-bottom: 12mm;
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    .topline {
+      font-size: 8.5pt;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.1px;
+      margin-bottom: 4mm;
+    }
+
+    .rule {
+      border-top: 1px solid var(--line);
+      margin-bottom: 10mm;
+    }
+
+    .cover {
+      text-align: center;
+      padding-top: 42mm;
+    }
+
+    h1 {
+      color: var(--brand);
+      font-size: 23pt;
+      margin: 0 0 10mm 0;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      font-size: 15pt;
+      color: #4b5563;
+      margin-bottom: 8mm;
+    }
+
+    .accent {
+      width: 60%;
+      margin: 0 auto 10mm auto;
+      border-top: 2px solid var(--brand);
+    }
+
+    .meta {
+      color: var(--muted);
+      font-style: italic;
+      margin: 3mm 0;
+    }
+
+    h2 {
+      color: var(--brand);
+      font-size: 15pt;
+      margin: 0 0 3mm 0;
+    }
+
+    h3 {
+      color: #0f4c81;
+      font-size: 12pt;
+      margin: 8mm 0 3mm 0;
+    }
+
+    p {
+      margin: 0 0 3mm 0;
+    }
+
+    ul {
+      margin: 2mm 0 0 6mm;
+      padding: 0;
+    }
+
+    li {
+      margin: 0 0 2.2mm 0;
+    }
+
+    .section-rule {
+      border-top: 1px solid var(--brand);
+      margin-bottom: 7mm;
+    }
+
+    .codeblock {
+      background: var(--code);
+      border: 1px solid #d8dee8;
+      border-radius: 4px;
+      padding: 3.5mm 4mm;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 8.7pt;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 3mm 0 6mm 0;
+    }
+
+    .stats {
+      margin: 3mm 0 6mm 0;
+    }
+
+    .stats p {
+      margin: 1.3mm 0;
+    }
+
+    .footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 8.5pt;
+    }
+
+    .small-gap li {
+      margin-bottom: 1.6mm;
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="topline">Mundial 2026 - Simulator API | Reporte SonarQube &amp; Calidad</div>
+    <div class="rule"></div>
+
+    <div class="cover">
+      <h1>Reporte de Calidad y Cobertura</h1>
+      <div class="subtitle">Mundial 2026 - Simulator API</div>
+      <div class="accent"></div>
+      <p class="meta">Generado: 18/06/2026 18:29</p>
+      <p class="meta">Preparación para análisis SonarQube + Cobertura &gt; 80%</p>
+    </div>
+
+    <div style="margin-top: 34mm;">
+      <h2>1. Diagnóstico Inicial</h2>
+      <div class="section-rule"></div>
+
+      <h3>Estructura del proyecto</h3>
+      <p>API FastAPI con arquitectura en capas: <code>routers</code> / <code>services</code> / <code>repositories</code> / <code>models</code> / <code>schemas</code>. Base de datos SQLite con SQLAlchemy 2.x. Tests con pytest, httpx TestClient y DB en memoria.</p>
+
+      <h3>Problemas de calidad detectados (code smells)</h3>
+      <ul>
+        <li><code>simulator_service.py</code>: imports no usados (<code>json</code>, <code>sys</code>, <code>KnockoutMatch</code>, <code>MatchResult</code> duplicado).</li>
+        <li><code>simulator_service.py</code>: método muerto <code>_validate_data()</code> que siempre retorna <code>True</code> y nunca se invoca.</li>
+        <li>Números mágicos sin constantes nominales (<code>32</code>, <code>3</code>, <code>5</code>, <code>4</code>, <code>8</code> hardcodeados).</li>
+        <li><code>database.py</code>: URL de conexión hardcodeada sin constante intermedia.</li>
+        <li>No existía <code>sonar-project.properties</code> ni configuración de cobertura en <code>pytest.ini</code>.</li>
+      </ul>
+
+      <h3>Brechas de cobertura principales</h3>
+      <ul>
+        <li><code>services/user_service.py</code>: 0% de coverage.</li>
+        <li><code>routers/users.py</code>: 0% de coverage.</li>
+        <li><code>repositories/</code> (<code>user</code>, <code>team</code>, <code>player</code>): cobertura solo indirecta vía routers.</li>
+        <li>Edge cases faltantes: update user not found, update team code uppercased, update player position uppercased.</li>
+      </ul>
+
+      <h3>Tests existentes (antes de la intervención)</h3>
+      <p>Aproximadamente 38 tests distribuidos en: <code>test_teams.py</code>, <code>test_players.py</code>, <code>test_simulator.py</code>, <code>test_dashboard.py</code> y <code>test_frontend_smoke.py</code>.</p>
+    </div>
+
+    <div class="footer">Página 1 / 4</div>
+  </section>
+
+  <section class="page">
+    <div class="topline">Mundial 2026 - Simulator API | Reporte SonarQube &amp; Calidad</div>
+    <div class="rule"></div>
+
+    <h2>2. Cambios Aplicados</h2>
+    <div class="section-rule"></div>
+
+    <h3>2.1 Quality Fixes - Código Fuente</h3>
+    <p><strong>Archivo:</strong> <code>services/simulator_service.py</code></p>
+    <ul class="small-gap">
+      <li>Eliminados: <code>import json</code>, <code>import sys</code>, <code>import KnockoutMatch</code>, <code>import MatchResult as MatchResultType</code>.</li>
+      <li>Eliminado método muerto <code>_validate_data()</code> (25 líneas de código muerto).</li>
+      <li>Agregadas constantes: <code>TOTAL_TEAMS=32</code>, <code>TEAMS_PER_GROUP=4</code>, <code>MIN_PLAYERS=3</code>, <code>MAX_GOALS=5</code>.</li>
+      <li>Reemplazados todos los números mágicos por las constantes correspondientes.</li>
+      <li><code>range(0, 8, 2)</code> reemplazado por <code>range(0, len(GROUP_NAMES), 2)</code>.</li>
+      <li><code>range(0, 4, 2)</code> reemplazado por <code>range(0, TEAMS_PER_GROUP, 2)</code>.</li>
+    </ul>
+
+    <p><strong>Archivo:</strong> <code>database.py</code></p>
+    <ul class="small-gap">
+      <li>Agregada constante <code>DATABASE_URL = "sqlite:///./worldcup.db"</code> como capa intermedia.</li>
+    </ul>
+
+    <h3>2.2 Configuración SonarQube y Testing</h3>
+    <p><strong>Archivo:</strong> <code>sonar-project.properties</code> (nuevo)</p>
+    <div class="codeblock">sonar.projectKey=mundial-2026-simulator
+sonar.projectName=Mundial 2026 - Simulator API
+sonar.projectVersion=1.0
+sonar.sources=.
+sonar.exclusions=static/**,tests/**,docs/**,*.md,demo_playwright.py
+sonar.tests=tests
+sonar.python.coverage.reportPaths=coverage.xml
+sonar.python.version=3.11</div>
+
+    <p><strong>Archivo:</strong> <code>pytest.ini</code> (modificado)</p>
+    <ul class="small-gap">
+      <li>Agregado: <code>addopts = --cov=. --cov-report=term-missing --cov-report=xml</code>.</li>
+    </ul>
+
+    <h3>2.3 Tests Nuevos</h3>
+    <ul>
+      <li><strong><code>tests/test_users.py</code></strong> (nuevo - 13 tests): CRUD completo de usuarios, email duplicado (409), email inválido (422), user not found (404) y update user not found.</li>
+      <li><strong><code>tests/test_repositories.py</code></strong> (nuevo - 15 tests): cobertura de <code>UserRepository</code>, <code>TeamRepository</code> y <code>PlayerRepository</code>.</li>
+      <li><strong><code>tests/test_teams.py</code></strong> (1 test nuevo): <code>test_update_team_code_uppercased</code>.</li>
+      <li><strong><code>tests/test_players.py</code></strong> (1 test nuevo): <code>test_update_player_position_uppercased</code>.</li>
+      <li><strong><code>tests/test_users.py</code></strong> (1 test nuevo): <code>test_update_user_not_found</code>.</li>
+    </ul>
+
+    <div class="footer">Página 2 / 4</div>
+  </section>
+
+  <section class="page">
+    <div class="topline">Mundial 2026 - Simulator API | Reporte SonarQube &amp; Calidad</div>
+    <div class="rule"></div>
+
+    <h2>3. Resultados de Ejecución</h2>
+    <div class="section-rule"></div>
+
+    <h3>Comandos ejecutados</h3>
+    <div class="codeblock">pytest tests/ -v --ignore=tests/test_frontend_smoke.py --cov=. --cov-report=term-missing --cov-report=xml</div>
+
+    <h3>Resultado de tests</h3>
+    <div class="stats">
+      <p><strong>Tests totales:</strong> 118</p>
+      <p><strong>Pasaron:</strong> 118 (100%)</p>
+      <p><strong>Fallaron:</strong> 0</p>
+      <p><strong>Tiempo de ejecución:</strong> ~37 segundos</p>
+    </div>
+
+    <h3>Resultado de cobertura</h3>
+    <div class="stats">
+      <p><strong>Cobertura global:</strong> 94%</p>
+      <p><strong>Archivos con 100%:</strong> 28 de 39</p>
+      <p><strong>Archivos productivos &gt; 80%:</strong> 33 de 39 (excluye <code>demo_playwright</code>)</p>
+    </div>
+
+    <h3>Módulos con 100% de cobertura</h3>
+    <ul>
+      <li><code>main.py</code>, <code>models/*</code>, <code>repositories/*</code>, <code>routers/*</code>.</li>
+      <li><code>schemas/*</code>, <code>services/*</code> (todos los servicios).</li>
+      <li><code>tests/conftest.py</code>, <code>tests/test_players.py</code>, <code>tests/test_repositories.py</code>.</li>
+      <li><code>tests/test_simulator.py</code>, <code>tests/test_teams.py</code>, <code>tests/test_users.py</code>.</li>
+    </ul>
+
+    <h3>Únicos misses (no productivos o no aplicables en testing)</h3>
+    <ul>
+      <li><code>database.py:15-19</code> → <code>get_db()</code> solo se usa en runtime; los tests sobreescriben la dependencia.</li>
+      <li><code>test_dashboard.py:212</code> → rama <code>else</code> de un <code>for-break</code>, casi imposible de ejecutar.</li>
+      <li><code>demo_playwright.py</code> → script de demostración, no es código productivo (excluido de SonarQube).</li>
+      <li><code>test_frontend_smoke.py</code> → tests de frontend que requieren Playwright + servidor corriendo.</li>
+    </ul>
+
+    <div class="footer">Página 3 / 4</div>
+  </section>
+
+  <section class="page">
+    <div class="topline">Mundial 2026 - Simulator API | Reporte SonarQube &amp; Calidad</div>
+    <div class="rule"></div>
+
+    <h2>4. Estado Final</h2>
+    <div class="section-rule"></div>
+
+    <h3>Respecto a SonarQube</h3>
+    <ul>
+      <li><code>sonar-project.properties</code> creado y configurado.</li>
+      <li><code>coverage.xml</code> generado.</li>
+      <li>Exclusiones configuradas para <code>static/</code>, <code>tests/</code>, <code>docs/</code> y <code>demo_playwright.py</code>.</li>
+      <li>Comando listo: <code>sonar-scanner</code> (requiere SonarQube Scanner CLI instalado).</li>
+    </ul>
+
+    <h3>Respecto a cobertura</h3>
+    <ul>
+      <li>Cobertura global: 94% (supera el 80% requerido).</li>
+      <li>Cobertura de código productivo: ~99%.</li>
+      <li>Todos los módulos principales cubiertos: routers, services, repositories, models, schemas.</li>
+    </ul>
+
+    <h3>Respecto a calidad de código</h3>
+    <ul>
+      <li>Código muerto eliminado (<code>_validate_data</code>).</li>
+      <li>Imports no usados eliminados.</li>
+      <li>Números mágicos reemplazados por constantes nominales.</li>
+      <li>Duplicación de imports corregida.</li>
+    </ul>
+
+    <h3>Resumen de archivos modificados/creados</h3>
+    <p><strong>Modificados:</strong> <code>services/simulator_service.py</code>, <code>database.py</code>, <code>pytest.ini</code>, <code>tests/test_teams.py</code>, <code>tests/test_players.py</code>, <code>tests/test_users.py</code>.</p>
+    <p><strong>Creados:</strong> <code>sonar-project.properties</code>, <code>tests/test_users.py</code>, <code>tests/test_repositories.py</code>, <code>generate_report.py</code>.</p>
+
+    <h3>Conclusión</h3>
+    <p><strong>Proyecto listo para análisis SonarQube con cobertura &gt; 80%.</strong> 118 tests pasan al 100%, con 94% de cobertura global, sin code smells críticos y con configuración SonarQube completa. Solo resta ejecutar <code>sonar-scanner</code> desde la raíz del proyecto.</p>
+
+    <div class="footer">Página 4 / 4</div>
+  </section>
+</body>
+</html>

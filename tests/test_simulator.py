@@ -308,7 +308,7 @@ def test_simulator_run_some_teams_have_players(client: TestClient):
     t1 = _create_team_with_players(client, "Argentina", "ARG", 5)
     t2 = _create_team_with_players(client, "Brasil", "BRA", 2)
     for _ in range(30):
-        client.post("/teams/", json={"name": f"Team extra", "code": f"TE"})
+        client.post("/teams/", json={"name": "Team extra", "code": "TE"})
     res = client.post("/simulator/run")
     assert res.status_code == 200
 

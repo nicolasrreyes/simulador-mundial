@@ -1,4 +1,6 @@
-import json, os, pathlib
+import json
+import os
+import pathlib
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 

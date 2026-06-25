@@ -92,7 +92,6 @@ def test_dashboard_top_scorer_exists_in_db(client: TestClient):
     player_names = {p["name"] for p in player_res.json()}
     assert ts["player_name"] in player_names
 
-    team_players = [p for p in player_res.json() if p["team_id"] == 0]
     for p in player_res.json():
         team_of_player = None
         for t in team_res.json():
@@ -190,7 +189,8 @@ def test_dashboard_reflects_last_simulation(client: TestClient):
     res2 = client.get("/metrics/dashboard")
     c2 = res2.json()["champion"]
 
-    assert res2.json()["champion"] is not None
+    assert c1 is not None
+    assert c2 is not None
     assert res2.json()["total_matches"] == EXPECTED_TOTAL_MATCHES
 
 
