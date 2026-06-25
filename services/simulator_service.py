@@ -9,12 +9,65 @@ from services.simulation_cache import store as cache_store
 from sqlalchemy.orm import Session
 
 
-TOTAL_TEAMS = 32
+TOTAL_TEAMS = 48
 TEAMS_PER_GROUP = 4
 MIN_PLAYERS = 3
 MAX_GOALS = 5
-GROUP_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H"]
+GROUP_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+BEST_THIRD_PLACES = 8
 POSITIONS = ["GK", "DF", "MF", "FW"]
+
+WORLD_CUP_2026_TEAMS = [
+    ("Argentina", "ARG", "CONMEBOL"),
+    ("Brasil", "BRA", "CONMEBOL"),
+    ("Uruguay", "URU", "CONMEBOL"),
+    ("Colombia", "COL", "CONMEBOL"),
+    ("Ecuador", "ECU", "CONMEBOL"),
+    ("Paraguay", "PAR", "CONMEBOL"),
+    ("Mexico", "MEX", "CONCACAF"),
+    ("USA", "USA", "CONCACAF"),
+    ("Canada", "CAN", "CONCACAF"),
+    ("Panama", "PAN", "CONCACAF"),
+    ("Curazao", "CUW", "CONCACAF"),
+    ("Haiti", "HAI", "CONCACAF"),
+    ("England", "ENG", "UEFA"),
+    ("France", "FRA", "UEFA"),
+    ("Germany", "GER", "UEFA"),
+    ("Spain", "ESP", "UEFA"),
+    ("Netherlands", "NED", "UEFA"),
+    ("Portugal", "POR", "UEFA"),
+    ("Belgium", "BEL", "UEFA"),
+    ("Croatia", "CRO", "UEFA"),
+    ("Switzerland", "SUI", "UEFA"),
+    ("Austria", "AUT", "UEFA"),
+    ("Norway", "NOR", "UEFA"),
+    ("Scotland", "SCO", "UEFA"),
+    ("Sweden", "SWE", "UEFA"),
+    ("Turkey", "TUR", "UEFA"),
+    ("Bosnia", "BIH", "UEFA"),
+    ("Czech Republic", "CZE", "UEFA"),
+    ("Morocco", "MAR", "CAF"),
+    ("Senegal", "SEN", "CAF"),
+    ("Egypt", "EGY", "CAF"),
+    ("Algeria", "ALG", "CAF"),
+    ("Cote d'Ivoire", "CIV", "CAF"),
+    ("Tunisia", "TUN", "CAF"),
+    ("Ghana", "GHA", "CAF"),
+    ("Cape Verde", "CPV", "CAF"),
+    ("South Africa", "RSA", "CAF"),
+    ("DR Congo", "COD", "CAF"),
+    ("Japan", "JPN", "AFC"),
+    ("Iran", "IRN", "AFC"),
+    ("South Korea", "KOR", "AFC"),
+    ("Australia", "AUS", "AFC"),
+    ("Saudi Arabia", "KSA", "AFC"),
+    ("Qatar", "QAT", "AFC"),
+    ("Jordan", "JOR", "AFC"),
+    ("Uzbekistan", "UZB", "AFC"),
+    ("Iraq", "IRQ", "AFC"),
+    ("New Zealand", "NZL", "OFC"),
+]
+
 FIRST_NAMES = [
     "Liam", "Noah", "Oliver", "James", "Elijah", "Mateo", "Theo", "Henry",
     "Lucas", "Mason", "Ethan", "Logan", "Daniel", "Jack", "Gabriel", "Samuel",
@@ -42,16 +95,21 @@ class SimulatorService:
         from schemas.team import TeamCreate
         from schemas.player import PlayerCreate
 
-        existing_count = self.team_repo.count()
-        needed = TOTAL_TEAMS - existing_count
-        start = existing_count + 1
-        for i in range(start, start + needed):
-            code = f"P{i:02d}"
-            team = self.team_repo.create(TeamCreate(name=f"Pais {i}", code=code))
+        existing_names = {t.name for t in self.team_repo.get_all()}
+        existing_codes = {t.code for t in self.team_repo.get_all()}
+        pool = [(n, c) for n, c, _ in WORLD_CUP_2026_TEAMS
+                if n not in existing_names and c not in existing_codes]
+
+        needed = TOTAL_TEAMS - self.team_repo.count()
+        if needed <= 0:
+            return
+        random.shuffle(pool)
+        for name, code in pool[:needed]:
+            team = self.team_repo.create(TeamCreate(name=name, code=code))
             for player_index in range(2):
                 fname = random.choice(FIRST_NAMES)
                 lname = random.choice(POSITION_POOL[random.choice(POSITIONS)])
-                self.player_repo.create(PlayerCreate(name=f"{fname} {lname} {i}-{player_index + 1}", position=random.choice(POSITIONS), team_id=team.id))
+                self.player_repo.create(PlayerCreate(name=f"{fname} {lname} {team.id}-{player_index + 1}", position=random.choice(POSITIONS), team_id=team.id))
 
     def _assign_groups(self):
         teams = self.team_repo.get_all()
@@ -138,6 +196,27 @@ class SimulatorService:
             qualified[gr.group] = [t.team for t in top_two]
         return qualified
 
+    def _get_best_third_placed(self, group_results: list[GroupStageResult]) -> list[str]:
+        third_placed = []
+        for gr in group_results:
+            third = sorted(gr.standings, key=lambda x: (x.pts, x.gd, x.gf), reverse=True)[2]
+            third_placed.append((third.pts, third.gd, third.gf, third.team))
+        third_placed.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+        return [t[3] for t in third_placed[:BEST_THIRD_PLACES]]
+
+    def _rank_advancing_teams(self, group_results: list[GroupStageResult],
+                               qualified: dict, best_third: list[str]) -> list[str]:
+        first_places = []
+        second_places = []
+        for gr in group_results:
+            standings = sorted(gr.standings, key=lambda x: (x.pts, x.gd, x.gf), reverse=True)
+            first_places.append((standings[0].pts, standings[0].gd, standings[0].gf, standings[0].team))
+            second_places.append((standings[1].pts, standings[1].gd, standings[1].gf, standings[1].team))
+        first_places.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+        second_places.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+        ranked = [t[3] for t in first_places] + [t[3] for t in second_places] + best_third
+        return ranked
+
     def _simulate_knockout(self, matches: list[tuple]) -> tuple[list[MatchResult], list[str]]:
         results = []
         winners = []
@@ -147,17 +226,11 @@ class SimulatorService:
             winners.append(match.winner)
         return results, winners
 
-    def _build_r16_matches(self, qualified: dict) -> list[tuple]:
-        return [
-            (qualified["A"][0], qualified["B"][1]),
-            (qualified["C"][0], qualified["D"][1]),
-            (qualified["E"][0], qualified["F"][1]),
-            (qualified["G"][0], qualified["H"][1]),
-            (qualified["B"][0], qualified["A"][1]),
-            (qualified["D"][0], qualified["C"][1]),
-            (qualified["F"][0], qualified["E"][1]),
-            (qualified["H"][0], qualified["G"][1]),
-        ]
+    def _build_r32_matches(self, ranked: list[str]) -> list[tuple]:
+        return [(ranked[i], ranked[31 - i]) for i in range(16)]
+
+    def _build_r16_matches(self, winners: list[str]) -> list[tuple]:
+        return [(winners[i], winners[i + 1]) for i in range(0, 16, 2)]
 
     def _cache_metrics(self, response: SimulatorResponse):
         teams = self.team_repo.get_all()
@@ -169,6 +242,7 @@ class SimulatorService:
         all_matches: list[MatchResult] = []
         for gr in response.groups:
             all_matches.extend(gr.matches)
+        all_matches.extend(response.round_of_32)
         all_matches.extend(response.round_of_16)
         all_matches.extend(response.quarterfinals)
         all_matches.extend(response.semifinals)
@@ -219,14 +293,19 @@ class SimulatorService:
 
         group_results = self._simulate_group_stage()
         qualified = self._get_qualified(group_results)
+        best_third = self._get_best_third_placed(group_results)
+        ranked = self._rank_advancing_teams(group_results, qualified, best_third)
 
-        r16_matches = self._build_r16_matches(qualified)
+        r32_matches = self._build_r32_matches(ranked)
+        r32_results, r32_winners = self._simulate_knockout(r32_matches)
+
+        r16_matches = self._build_r16_matches(r32_winners)
         r16_results, r16_winners = self._simulate_knockout(r16_matches)
 
-        qf_matches = [(r16_winners[i], r16_winners[i + 1]) for i in range(0, len(GROUP_NAMES), 2)]
+        qf_matches = [(r16_winners[i], r16_winners[i + 1]) for i in range(0, 8, 2)]
         qf_results, qf_winners = self._simulate_knockout(qf_matches)
 
-        sf_matches = [(qf_winners[i], qf_winners[i + 1]) for i in range(0, TEAMS_PER_GROUP, 2)]
+        sf_matches = [(qf_winners[i], qf_winners[i + 1]) for i in range(0, 4, 2)]
         sf_results, sf_winners = self._simulate_knockout(sf_matches)
 
         sf1_loser = sf_results[0].away_team if sf_results[0].winner == sf_results[0].home_team else sf_results[0].home_team
@@ -237,6 +316,7 @@ class SimulatorService:
 
         response = SimulatorResponse(
             groups=group_results,
+            round_of_32=r32_results,
             round_of_16=r16_results,
             quarterfinals=qf_results,
             semifinals=sf_results,

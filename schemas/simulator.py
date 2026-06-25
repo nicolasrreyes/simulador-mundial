@@ -32,6 +32,7 @@ class KnockoutMatch(BaseModel):
 
 class SimulatorResponse(BaseModel):
     groups: list[GroupStageResult]
+    round_of_32: list[MatchResult]
     round_of_16: list[MatchResult]
     quarterfinals: list[MatchResult]
     semifinals: list[MatchResult]

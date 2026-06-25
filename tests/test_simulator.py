@@ -1,12 +1,13 @@
 from fastapi.testclient import TestClient
 
-GROUP_NAMES = set("ABCDEFGH")
+GROUP_NAMES = set("ABCDEFGHIJKL")
 
 
 def _all_simulation_matches(data: dict) -> list[dict]:
     matches = []
     for group in data["groups"]:
         matches.extend(group["matches"])
+    matches.extend(data["round_of_32"])
     matches.extend(data["round_of_16"])
     matches.extend(data["quarterfinals"])
     matches.extend(data["semifinals"])
@@ -16,9 +17,9 @@ def _all_simulation_matches(data: dict) -> list[dict]:
     return matches
 
 
-def _seed_32_teams(client: TestClient) -> list[dict]:
+def _seed_48_teams(client: TestClient) -> list[dict]:
     teams = []
-    for i in range(1, 33):
+    for i in range(1, 49):
         res = client.post("/teams/", json={"name": f"Team {i}", "code": f"T{i:02d}"})
         teams.append(res.json())
     return teams
@@ -48,6 +49,7 @@ def test_simulator_run_response_structure(client: TestClient):
     res = client.post("/simulator/run")
     data = res.json()
     assert "groups" in data
+    assert "round_of_32" in data
     assert "round_of_16" in data
     assert "quarterfinals" in data
     assert "semifinals" in data
@@ -61,24 +63,26 @@ def test_simulator_run_exact_match_counts(client: TestClient):
     data = res.json()
 
     total_group_matches = sum(len(g["matches"]) for g in data["groups"])
-    assert total_group_matches == 48
+    assert total_group_matches == 72
 
+    assert len(data["round_of_32"]) == 16
     assert len(data["round_of_16"]) == 8
     assert len(data["quarterfinals"]) == 4
     assert len(data["semifinals"]) == 2
     assert data["third_place"] is not None
 
+    assert data["round_of_32"] is not None
     assert data["round_of_16"] is not None
     assert data["quarterfinals"] is not None
     assert data["semifinals"] is not None
     assert data["final"] is not None
-    assert len(_all_simulation_matches(data)) == 64
+    assert len(_all_simulation_matches(data)) == 104
 
 
 def test_simulator_run_group_stage_structure(client: TestClient):
     res = client.post("/simulator/run")
     data = res.json()
-    assert len(data["groups"]) == 8
+    assert len(data["groups"]) == 12
     assert {g["group"] for g in data["groups"]} == GROUP_NAMES
     for g in data["groups"]:
         assert len(g["standings"]) == 4
@@ -89,6 +93,9 @@ def test_simulator_run_knockout_winner_consistency(client: TestClient):
     res = client.post("/simulator/run")
     data = res.json()
 
+    r32_winners = {m["winner"] for m in data["round_of_32"]}
+    assert len(r32_winners) == 16
+
     r16_winners = {m["winner"] for m in data["round_of_16"]}
     assert len(r16_winners) == 8
 
@@ -97,6 +104,12 @@ def test_simulator_run_knockout_winner_consistency(client: TestClient):
 
     sf_winners = {m["winner"] for m in data["semifinals"]}
     assert len(sf_winners) == 2
+
+    r16_participants = set()
+    for m in data["round_of_16"]:
+        r16_participants.add(m["home_team"])
+        r16_participants.add(m["away_team"])
+    assert r16_participants == r32_winners
 
     qf_participants = set()
     for m in data["quarterfinals"]:
@@ -128,17 +141,17 @@ def test_simulator_run_third_place_not_finalists(client: TestClient):
         assert tp_teams.isdisjoint(finalists)
 
 
-def test_simulator_run_generates_32_teams(client: TestClient):
+def test_simulator_run_generates_48_teams(client: TestClient):
     client.post("/simulator/run")
     res = client.get("/teams/")
-    assert len(res.json()) == 32
+    assert len(res.json()) == 48
 
 
 def test_simulator_run_teams_have_players(client: TestClient):
     client.post("/simulator/run")
     res = client.get("/teams/")
     teams = res.json()
-    assert len(teams) == 32
+    assert len(teams) == 48
     for team in teams:
         player_res = client.get(f"/players/?team_id={team['id']}")
         assert len(player_res.json()) >= 3
@@ -150,19 +163,19 @@ def test_simulator_run_teams_assigned_groups(client: TestClient):
     teams = res.json()
     groups_seen = set()
     for t in teams:
-        assert t["group_name"] in "ABCDEFGH"
+        assert t["group_name"] in "ABCDEFGHIJKL"
         groups_seen.add(t["group_name"])
-    assert groups_seen == set("ABCDEFGH")
+    assert groups_seen == set("ABCDEFGHIJKL")
 
 
-def test_simulator_run_reuses_existing_32_teams(client: TestClient):
-    _seed_32_teams(client)
+def test_simulator_run_reuses_existing_48_teams(client: TestClient):
+    _seed_48_teams(client)
     res = client.post("/simulator/run")
     assert res.status_code == 200
     data = res.json()
     assert data["champion"] is not None
     team_res = client.get("/teams/")
-    assert len(team_res.json()) == 32
+    assert len(team_res.json()) == 48
 
 
 def test_simulator_run_partial_teams_generates_rest(client: TestClient):
@@ -171,7 +184,7 @@ def test_simulator_run_partial_teams_generates_rest(client: TestClient):
     res = client.post("/simulator/run")
     assert res.status_code == 200
     team_res = client.get("/teams/")
-    assert len(team_res.json()) == 32
+    assert len(team_res.json()) == 48
 
 
 def test_simulator_run_multiple_runs(client: TestClient):
@@ -202,6 +215,7 @@ def test_simulator_run_match_scores_in_range(client: TestClient):
 
     for g in data["groups"]:
         check_matches(g["matches"])
+    check_matches(data["round_of_32"])
     check_matches(data["round_of_16"])
     check_matches(data["quarterfinals"])
     check_matches(data["semifinals"])
@@ -242,8 +256,8 @@ def test_simulator_run_qualified_teams_unique(client: TestClient):
         for s in g["standings"]:
             if s["position"] <= 2:
                 qualified.append(s["team"])
-    assert len(qualified) == 16
-    assert len(set(qualified)) == 16
+    assert len(qualified) == 24
+    assert len(set(qualified)) == 24
 
 
 def test_simulator_run_group_positions_unique(client: TestClient):
@@ -273,6 +287,7 @@ def test_simulator_run_knockout_no_draws(client: TestClient):
             assert m["winner"] is not None
             assert m["winner"] in (m["home_team"], m["away_team"])
 
+    check_no_draw(data["round_of_32"])
     check_no_draw(data["round_of_16"])
     check_no_draw(data["quarterfinals"])
     check_no_draw(data["semifinals"])
@@ -289,11 +304,11 @@ def test_simulator_run_empty_db_autogenerates(client: TestClient):
     res = client.post("/simulator/run")
     assert res.status_code == 200
     get_res = client.get("/teams/")
-    assert len(get_res.json()) == 32
+    assert len(get_res.json()) == 48
 
 
-def test_simulator_run_exact_32_teams_no_players(client: TestClient):
-    _seed_32_teams(client)
+def test_simulator_run_exact_48_teams_no_players(client: TestClient):
+    _seed_48_teams(client)
     for team in client.get("/teams/").json():
         player_res = client.get(f"/players/?team_id={team['id']}")
         assert player_res.json() == []
@@ -307,8 +322,8 @@ def test_simulator_run_exact_32_teams_no_players(client: TestClient):
 def test_simulator_run_some_teams_have_players(client: TestClient):
     t1 = _create_team_with_players(client, "Argentina", "ARG", 5)
     t2 = _create_team_with_players(client, "Brasil", "BRA", 2)
-    for _ in range(30):
-        client.post("/teams/", json={"name": "Team extra", "code": "TE"})
+    for i in range(46):
+        client.post("/teams/", json={"name": f"Team extra {i}", "code": f"TE{i:02d}"})
     res = client.post("/simulator/run")
     assert res.status_code == 200
 
@@ -331,6 +346,7 @@ def test_simulator_run_all_match_teams_exist_in_db(client: TestClient):
 
     for g in data["groups"]:
         check_team_names(g["matches"])
+    check_team_names(data["round_of_32"])
     check_team_names(data["round_of_16"])
     check_team_names(data["quarterfinals"])
     check_team_names(data["semifinals"])
@@ -341,17 +357,17 @@ def test_simulator_run_group_even_distribution(client: TestClient):
     client.post("/simulator/run")
     res = client.get("/teams/")
     teams = res.json()
-    for group in "ABCDEFGH":
+    for group in "ABCDEFGHIJKL":
         group_teams = [t for t in teams if t["group_name"] == group]
         assert len(group_teams) == 4
 
 
-def test_simulator_run_with_33_teams_returns_400(client: TestClient):
-    for i in range(1, 34):
+def test_simulator_run_with_49_teams_returns_400(client: TestClient):
+    for i in range(1, 50):
         client.post("/teams/", json={"name": f"Team {i}", "code": f"T{i:02d}"})
     res = client.post("/simulator/run")
     assert res.status_code == 400
-    assert "32" in res.json()["detail"]
+    assert "48" in res.json()["detail"]
 
 
 def test_simulator_run_champion_comes_from_semifinalists(client: TestClient):

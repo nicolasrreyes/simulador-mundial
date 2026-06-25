@@ -1,12 +1,13 @@
 from fastapi.testclient import TestClient
 
-EXPECTED_TOTAL_MATCHES = 64
+EXPECTED_TOTAL_MATCHES = 104
 
 
 def _total_goals_from_simulation(data: dict) -> int:
     matches = []
     for group in data["groups"]:
         matches.extend(group["matches"])
+    matches.extend(data["round_of_32"])
     matches.extend(data["round_of_16"])
     matches.extend(data["quarterfinals"])
     matches.extend(data["semifinals"])
@@ -122,7 +123,7 @@ def test_dashboard_avg_goals_positive(client: TestClient):
     assert data["avg_goals_per_match"] > 0
 
 
-def test_dashboard_total_matches_is_64(client: TestClient):
+def test_dashboard_total_matches_is_104(client: TestClient):
     client.post("/simulator/run")
 
     res = client.get("/metrics/dashboard")

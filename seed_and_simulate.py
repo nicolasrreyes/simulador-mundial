@@ -166,6 +166,7 @@ def _render_groups(groups):
 
 def _render_bracket(data):
     rounds = [
+        ("round_of_32", "Treintaidosavos de Final"),
         ("round_of_16", "Octavos de Final"),
         ("quarterfinals", "Cuartos de Final"),
         ("semifinals", "Semifinales"),
@@ -220,6 +221,9 @@ def _render_stats(data):
         m.get("home_goals", 0) + m.get("away_goals", 0)
         for gr in groups
         for m in gr.get("matches", [])
+    ) + sum(
+        m.get("home_goals", 0) + m.get("away_goals", 0)
+        for m in data.get("round_of_32", [])
     )
     champion = data.get("champion", "")
     return f"""<div class="stat-item"><div class="stat-value">{len(groups) * 4}</div><div class="stat-label">Equipos</div></div>
